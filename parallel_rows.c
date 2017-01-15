@@ -300,7 +300,7 @@ void move_rabbits(){
 
 void move_foxes(){
   int x,y;
-  #pragma omg parallel for private(x,y)
+  #pragma omp parallel for private(x,y)
   for(x = 0; x < R; x++) {
     for(y = 0; y < C; y++) {
       if(world[x][y].type == 'F') {
@@ -365,7 +365,7 @@ int main() {
     world[i] = (object *)malloc(C * sizeof(object));
     new_world[i] = (object *)malloc(C * sizeof(object));
   }
-  int num_threads=8;
+  int num_threads=32;
   omp_set_num_threads(num_threads);
   lock_array = (omp_lock_t *)malloc(sizeof(omp_lock_t) * R);
   for(i = 0; i < R; i++){
@@ -386,7 +386,7 @@ int main() {
   }
   double final_time = omp_get_wtime();
   printf("%lf\n",(final_time - start_time)*1000);
-  output();
+  //output();
   for(i = 0; i < R; i++){
     omp_destroy_lock(&lock_array[i]);
   }
