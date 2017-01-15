@@ -27,11 +27,16 @@ int current_gen;
 
 void print_world() {
   int x,y;
-  printf("World\n");
+  printf("Generation %d\n", current_gen);
+  for(x = 0; x < C + 2; x++)
+    printf("-");
+  printf("\n");
   for(x = 0; x < R; x++) {
+    printf("|");
     for(y = 0; y < C; y++) {
       printf("%c", world[x][y].type);
     }
+    printf("|");
     printf("\n");
   }
   //printf("New World\n");
@@ -41,7 +46,10 @@ void print_world() {
   //}
   //printf("\n");
   //}
-  printf("-----------------------\n");
+  for(x = 0; x < C + 2; x++)
+    printf("-");
+  printf("\n");
+  printf("\n");
 }
 
 void init_world(){
@@ -143,6 +151,9 @@ void move_rabbit(int x, int y) {
     free_pos[0].x = x;
     free_pos[0].y = y;
     p = 1;
+    if(current.num_gen == 0) {
+      current.num_gen = 1;
+    }
   }
   else {
     if(current.num_gen == 0) {
@@ -225,6 +236,9 @@ void move_fox(int x, int y) {
     free_pos[0].x = x;
     free_pos[0].y = y;
     p = 1;
+    if(current.num_gen == 0) {
+      current.num_gen = 1;
+    }
   }
   else {
     if(current.num_gen == 0) {
@@ -298,6 +312,38 @@ void swap_worlds() {
   new_world = aux;
 }
 
+void output() {
+  int x,y;
+  int n_objects = 0;
+  for(x = 0; x < R; x++) {
+    for(y = 0; y < C; y++) {
+      if(world[x][y].type != ' ')
+	n_objects++;
+    }
+  }
+  printf("%d %d %d %d %d %d %d\n",
+	 GEN_PROC_RABBITS,
+	 GEN_PROC_FOXES,
+	 GEN_FOOD_FOXES,
+	 0,
+	 R,
+	 C,
+	 n_objects);
+  for(x = 0; x < R; x++) {
+    for(y = 0; y < C; y++) {
+      if(world[x][y].type == 'R')
+	printf("RABBIT ");
+      else if(world[x][y].type == 'F')
+	printf("FOX ");
+      else if(world[x][y].type == '*')
+	printf("ROCK ");
+      else
+	continue;
+      printf("%d %d\n", x, y);
+    }
+  }
+}
+
 int main() {
   scanf("%d", &GEN_PROC_RABBITS);
   scanf("%d", &GEN_PROC_FOXES);
@@ -316,6 +362,7 @@ int main() {
   init_world();
   fill_world();
   for(current_gen = 0; current_gen < N_GEN; current_gen++){
+    //print_world();
     move_rabbits();
     swap_worlds();
     reset_new_world();
@@ -324,5 +371,5 @@ int main() {
     swap_worlds();
     reset_new_world();
   }
-  print_world();
+  output();
 }
