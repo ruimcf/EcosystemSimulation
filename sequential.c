@@ -363,5 +363,5 @@ int main() {
   }
   double final_time = omp_get_wtime();
   printf("%lf\n",(final_time - start_time)*1000);
-  output();
+  //output();
 }

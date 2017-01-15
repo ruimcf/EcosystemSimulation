@@ -28,7 +28,7 @@ int n_threads;
 omp_lock_t *locks;
 
 omp_lock_t* get_lock(int x, int y) {
-  int index = (x * y)/((R * C)/n_threads);
+  int index = (y + (x*C))/((R * C)/n_threads);
   if(index >= n_threads)
     index = n_threads - 1;
   return &locks[index];
@@ -293,7 +293,7 @@ void move_rabbits(){
   #pragma omp parallel for private(x,y)
   for(position = 0; position < R*C; position++) {
     y = position % C;
-    x = position / R;
+    x = position / C;
     if(world[x][y].type == 'R') {
       move_rabbit(x, y);
     }
@@ -367,7 +367,7 @@ int main() {
   scanf("%d", &N);
   world = (object **)malloc(sizeof(object*) * R);
   new_world = (object **)malloc(sizeof(object*) * R);
-  n_threads = 4;
+  n_threads = 16;
   omp_set_num_threads(n_threads);
 
   locks = (omp_lock_t *)malloc(sizeof(omp_lock_t) * n_threads);
@@ -392,8 +392,8 @@ int main() {
     reset_new_world();
   }
   double final_time = omp_get_wtime();
-  printf("%lf\n", (final_time - start_time));
-  output();
+  printf("%lf\n", (final_time - start_time)*1000);
+  //output();
   for(i = 0; i < n_threads; i++) {
     omp_destroy_lock(&(locks[i]));
   }
