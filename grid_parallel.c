@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include<omp.h>
 
 
 typedef struct object_{
@@ -23,7 +24,15 @@ int N;
 object **world;
 object **new_world;
 int current_gen;
+int n_threads;
+omp_lock_t *locks;
 
+omp_lock_t* get_lock(int x, int y) {
+  int index = (x * y)/((R * C)/n_threads);
+  if(index >= n_threads)
+    index = n_threads - 1;
+  return &locks[index];
+}
 
 void print_world() {
   int x,y;
@@ -47,6 +56,7 @@ void print_world() {
 
 void init_world(){
   int x,y;
+  #pragma omp parallel for private(x,y)
   for(x = 0; x < R; x++) {
     for(y = 0; y < C; y++) {
       object empty;
@@ -61,6 +71,7 @@ void init_world(){
 
 void copy_rabbits(){
   int x,y;
+  #pragma omp parallel for private(x,y)
   for(x = 0; x < R; x++) {
     for(y = 0; y < C; y++) {
       if(world[x][y].type == 'R'){
@@ -72,6 +83,7 @@ void copy_rabbits(){
 
 void reset_new_world(){
   int x,y;
+  #pragma omp parallel for private(x,y)
   for(x = 0; x < R; x++) {
     for(y = 0; y < C; y++) {
       if(new_world[x][y].type != '*'){
@@ -158,6 +170,9 @@ void move_rabbit(int x, int y) {
   }
   new_pos_index = (x + y + current_gen) % p;
   new_pos = free_pos[new_pos_index];
+  omp_lock_t *lock = get_lock(new_pos.x, new_pos.y);
+  omp_set_lock(lock);
+
   new = &new_world[new_pos.x][new_pos.y];
   if(new->type == 'R'){
     if(current.num_gen - 1 < new->num_gen)
@@ -167,6 +182,7 @@ void move_rabbit(int x, int y) {
     new->type = current.type;
     new->num_gen = current.num_gen - 1;
   }
+  omp_unset_lock(lock);
 }
 
 void move_fox(int x, int y) {
@@ -244,6 +260,8 @@ void move_fox(int x, int y) {
   }
   new_pos_index = (x + y + current_gen) % p;
   new_pos = free_pos[new_pos_index];
+  omp_lock_t *lock = get_lock(new_pos.x, new_pos.y);
+  omp_set_lock(lock);
   new = &new_world[new_pos.x][new_pos.y];
   if(new->type == 'F'){
     if(current.num_gen - 1 < new->num_gen){
@@ -266,30 +284,34 @@ void move_fox(int x, int y) {
     new->num_gen = current.num_gen - 1;
     new->type = 'F';
   }
+  omp_unset_lock(lock);
 }
 
 void move_rabbits(){
   int x,y;
-  for(x = 0; x < R; x++) {
-    for(y = 0; y < C; y++) {
-      if(world[x][y].type == 'R') {
-	move_rabbit(x, y);
-      }
-      else if(world[x][y].type == 'F') {
-	new_world[x][y] = world[x][y];
-      }
-
+  int position;
+  #pragma omp parallel for private(x,y)
+  for(position = 0; position < R*C; position++) {
+    y = position % C;
+    x = position / R;
+    if(world[x][y].type == 'R') {
+      move_rabbit(x, y);
+    }
+    else if(world[x][y].type == 'F') {
+      new_world[x][y] = world[x][y];
     }
   }
 }
 
 void move_foxes(){
   int x,y;
-  for(x = 0; x < R; x++) {
-    for(y = 0; y < C; y++) {
-      if(world[x][y].type == 'F') {
-	move_fox(x, y);
-      }
+  int position;
+  #pragma omp parallel for private(x,y)
+  for(position = 0; position < R*C; position++) {
+    y = position % C;
+    x = position / R;
+    if(world[x][y].type == 'F') {
+      move_fox(x, y);
     }
   }
 }
@@ -304,6 +326,7 @@ void swap_worlds() {
 void output() {
   int x,y;
   int n_objects = 0;
+  #pragma omp parallel for reduction(+:n_objects) private(y)
   for(x = 0; x < R; x++) {
     for(y = 0; y < C; y++) {
       if(world[x][y].type != ' ')
@@ -333,6 +356,7 @@ void output() {
   }
 }
 
+
 int main() {
   scanf("%d", &GEN_PROC_RABBITS);
   scanf("%d", &GEN_PROC_FOXES);
@@ -343,15 +367,22 @@ int main() {
   scanf("%d", &N);
   world = (object **)malloc(sizeof(object*) * R);
   new_world = (object **)malloc(sizeof(object*) * R);
+  n_threads = 4;
+  omp_set_num_threads(n_threads);
+
+  locks = (omp_lock_t *)malloc(sizeof(omp_lock_t) * n_threads);
   int i;
+  for(i = 0; i < n_threads; i++) {
+    omp_init_lock(&(locks[i]));
+  }
   for(i = 0; i < R; i++) {
     world[i] = (object *)malloc(C * sizeof(object));
     new_world[i] = (object *)malloc(C * sizeof(object));
   }
   init_world();
   fill_world();
+  double start_time = omp_get_wtime();
   for(current_gen = 0; current_gen < N_GEN; current_gen++){
-    //print_world();
     move_rabbits();
     swap_worlds();
     reset_new_world();
@@ -360,5 +391,10 @@ int main() {
     swap_worlds();
     reset_new_world();
   }
+  double final_time = omp_get_wtime();
+  printf("%lf\n", (final_time - start_time));
   output();
+  for(i = 0; i < n_threads; i++) {
+    omp_destroy_lock(&(locks[i]));
+  }
 }
