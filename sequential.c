@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include<omp.h>
 
 
 typedef struct object_{
@@ -23,7 +24,6 @@ int N;
 object **world;
 object **new_world;
 int current_gen;
-
 
 void print_world() {
   int x,y;
@@ -361,6 +361,7 @@ int main() {
   }
   init_world();
   fill_world();
+  double start_time = omp_get_wtime();
   for(current_gen = 0; current_gen < N_GEN; current_gen++){
     //print_world();
     move_rabbits();
@@ -371,5 +372,7 @@ int main() {
     swap_worlds();
     reset_new_world();
   }
+  double final_time = omp_get_wtime();
+  printf("%lf\n",(final_time - start_time)*1000);
   output();
 }

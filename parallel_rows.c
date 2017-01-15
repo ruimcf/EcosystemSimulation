@@ -306,9 +306,6 @@ void move_foxes(){
       if(world[x][y].type == 'F') {
 	    move_fox(x, y);
       }
-      else if(world[x][y].type == 'C') {
-	    new_world[x][y] = world[x][y];
-      }
     }
   }
 }
@@ -368,12 +365,15 @@ int main() {
     world[i] = (object *)malloc(C * sizeof(object));
     new_world[i] = (object *)malloc(C * sizeof(object));
   }
+  int num_threads=8;
+  omp_set_num_threads(num_threads);
   lock_array = (omp_lock_t *)malloc(sizeof(omp_lock_t) * R);
   for(i = 0; i < R; i++){
     omp_init_lock(&lock_array[i]);
   }
   init_world();
   fill_world();
+  double start_time = omp_get_wtime();
   for(current_gen = 0; current_gen < N_GEN; current_gen++){
     //print_world();
     move_rabbits();
@@ -384,6 +384,8 @@ int main() {
     swap_worlds();
     reset_new_world();
   }
+  double final_time = omp_get_wtime();
+  printf("%lf\n",(final_time - start_time)*1000);
   output();
   for(i = 0; i < R; i++){
     omp_destroy_lock(&lock_array[i]);
